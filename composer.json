@@ -1,0 +1,20 @@
+{
+    "name": "juksy/shredder",
+    "description": "Facebook Helper",
+    "license": "MIT",
+    "authors": [
+        {
+            "name": "easontsai",
+            "email": "easontsai@juksy.com"
+        }
+    ],
+    "require": {
+        "facebook/graph-sdk": "^5.4",
+        "illuminate/http": "^5.4"
+    },
+    "autoload": {
+        "psr-4": {
+            "Juksy\\Shredder\\": "src/Shredder"
+        }
+    }
+}
