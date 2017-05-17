@@ -2,14 +2,10 @@
 
 namespace Juksy\Shredder;
 
-
 use Illuminate\Support\ServiceProvider;
 
 class ShredderServiceProvider extends ServiceProvider
 {
-    protected $app_id;
-    protected $app_secret;
-
     /**
      * Bootstrap any application services.
      *
@@ -20,6 +16,11 @@ class ShredderServiceProvider extends ServiceProvider
         $this->mergeConfigFrom(
             __DIR__ . '/../../config/shredder.php', 'shredder'
         );
+
+        // Publish a config file
+        $this->publishes([
+            __DIR__ . '/../../config/shredder.php' => config_path('shredder.php')
+        ], 'config');
     }
 
     /**
@@ -29,12 +30,17 @@ class ShredderServiceProvider extends ServiceProvider
      */
     public function register()
     {
-        // Set object
-        $me = $this;
-
-        $this->app->singleton('shredder', function () use ($me)
+        $this->app->singleton('shredder', function ($app)
         {
-            return new ShredderHandler($me->app_id, $me->$app_secret);
+            $config = [
+                'app_id' => $app['config']->get('shredder.app_id'),
+                'app_secret' => $app['config']->get('shredder.app_secret'),
+                'default_graph_version' => $app['config']->get('shredder.default_graph_version'),
+            ];
+
+            $config['persistent_data_handler'] = new LaravelPersistentDataHandler($app['session.store']);
+
+            return new ShredderHandler($config);
         });
     }
 }

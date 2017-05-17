@@ -1,10 +1,12 @@
 <?php
+
 namespace Juksy\Shredder;
 
-use Illuminate\Support\Facades\Config;
+use Facebook\Authentication\AccessToken;
 use Illuminate\Http\RedirectResponse;
-use Juksy\Shredder\Exception\NoAccessTokenException;
-use Juksy\Shredder\Entities\SchedulePost;
+use Juksy\Shredder\Entities\Plate;
+use Juksy\Shredder\Exceptions\NoAccessTokenException;
+use Juksy\Shredder\Exceptions\NoPageAccessTokenException;
 
 /**
  *
@@ -17,20 +19,18 @@ use Juksy\Shredder\Entities\SchedulePost;
  */
 class ShredderHandler
 {
-    private   $fb;
+    private $fb;
 
-    function __construct()
+    function __construct($config)
     {
-        $this->fb = new \Facebook\Facebook([
-            'app_id'                => Config::get('shredder.app_id'),
-            'app_secret'            => Config::get('shredder.app_secret'),
-            'default_graph_version' => Config::get('shredder.graph_api_version'),
-        ]);
+        $this->fb = new \Facebook\Facebook($config);
     }
 
     /**
      * get Login Url
-     * @return [type] [description]
+     *
+     * @param string $backUrl
+     * @return RedirectResponse
      */
     public function login($backUrl)
     {
@@ -43,31 +43,32 @@ class ShredderHandler
 
     /**
      * return user token throw NoAccessTokenException
-     * @return [type] [description]
+     *
+     * @return string
      */
     public function getAccessToken()
     {
         $helper = $this->fb->getRedirectLoginHelper();
-        try {
-            $accessToken = $helper->getAccessToken(); // personal account Logged in!
-            $accessToken = $this->getPageAccessToken($accessToken); //page access token
+        $accessToken = $helper->getAccessToken(); // personal account Logged in!
 
-            return (string) $accessToken;
-        } catch(\Exception $e) {
-            return new NoAccessTokenException();
+        if (is_null($accessToken)) {
+            throw new NoAccessTokenException();
         }
 
+        return (string) $accessToken;
     }
 
     /**
      * return redirect
-     * @param  str callback_url
+     *
+     * @param string $page_id
+     * @param string $access_token
      * @return string
      */
-    private function getPageAccessToken($accessToken)
+    private function getPageAccessToken($page_id, $access_token)
     {
         // 取得現在用戶對該頁面的發文權限，存到 page_access_token
-        $ret = $this->fb->get('/' . $this->page_id . '?fields=access_token', $accessToken);
+        $ret = $this->fb->get('/' . $page_id . '?fields=access_token', $access_token);
         $ret_decode = $ret->getDecodedBody();
         $page_access_token = (isset($ret_decode['access_token'])) ? $ret_decode['access_token'] : '';
 
@@ -75,11 +76,15 @@ class ShredderHandler
             return new NoPageAccessTokenException();
         }
 
-        return (string)$page_access_token;
+        return (string) $page_access_token;
     }
 
     /**
      * throw Exception
+     *
+     * @param AccessToken|string $access_token
+     * @param Plate $plate
+     * @return array
      */
     public function feedPost($access_token, Plate $plate)
     {
@@ -94,15 +99,18 @@ class ShredderHandler
 
     /**
      * throw NoAccessTokenException
-     * @param  [type] $pageId [description]
-     * @return [type]         [description]
+     *
+     * @param AccessToken|string $access_token
+     * @param Plate $plate
+     * @param array $fields
+     * @return array
      */
     public function getPosts($access_token, Plate $plate, $fields = [])
     {
         $endpoint = rtrim($plate->getEndpoint(), "/") . '/promotable_posts';
 
         if (count($fields)) {
-            $endpoint += '?fields=' . implode(',', $fields);
+            $endpoint .= '?fields=' . implode(',', $fields);
         }
 
         $ret = $this->fb->get($endpoint, $access_token);
