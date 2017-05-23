@@ -3,7 +3,6 @@
 namespace Juksy\Shredder;
 
 use Facebook\Authentication\AccessToken;
-use Illuminate\Http\RedirectResponse;
 use Juksy\Shredder\Entities\Plate;
 use Juksy\Shredder\Exceptions\NoAccessTokenException;
 use Juksy\Shredder\Exceptions\NoPageAccessTokenException;
@@ -19,10 +18,16 @@ use Juksy\Shredder\Exceptions\NoPageAccessTokenException;
  */
 class ShredderHandler
 {
-    private $fb;
+    /**
+     * @var \Illuminate\Console\Application
+     */
+    private $app;
 
-    function __construct($config)
+    public $fb;
+
+    function __construct($app, $config)
     {
+        $this->app = $app;
         $this->fb = new \Facebook\Facebook($config);
     }
 
@@ -30,23 +35,22 @@ class ShredderHandler
      * get Login Url
      *
      * @param string $backUrl
-     * @return RedirectResponse
+     * @return string
      */
     public function login($backUrl)
     {
         $helper = $this->fb->getRedirectLoginHelper();
         $permissions = ['email', 'user_likes', 'manage_pages', 'publish_pages']; // optional
-        $loginUrl = $helper->getLoginUrl($backUrl, $permissions);
-
-        return new RedirectResponse($loginUrl);
+        return $helper->getLoginUrl($backUrl, $permissions);
     }
 
     /**
      * return user token throw NoAccessTokenException
      *
+     * @param $page_id
      * @return string
      */
-    public function getAccessToken()
+    public function getAccessToken($page_id)
     {
         $helper = $this->fb->getRedirectLoginHelper();
         $accessToken = $helper->getAccessToken(); // personal account Logged in!
@@ -55,7 +59,7 @@ class ShredderHandler
             throw new NoAccessTokenException();
         }
 
-        return (string) $accessToken;
+        return $this->getPageAccessToken($page_id, (string) $accessToken);
     }
 
     /**

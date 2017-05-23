@@ -38,9 +38,10 @@ class ShredderServiceProvider extends ServiceProvider
                 'default_graph_version' => $app['config']->get('shredder.default_graph_version'),
             ];
 
+            // Using session by Laravel.
             $config['persistent_data_handler'] = new LaravelPersistentDataHandler($app['session.store']);
 
-            return new ShredderHandler($config);
+            return new ShredderHandler($app, $config);
         });
     }
 }
