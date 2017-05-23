@@ -14,8 +14,6 @@ class SchedulePost implements Plate
 
     public $description;
 
-    public $published;
-
     public $scheduled_publish_time;
 
     public $caption;
@@ -28,8 +26,13 @@ class SchedulePost implements Plate
     public function getMessages()
     {
         return [
-            'description' => $this->description
+            'message' => $this->message,
+            'link' => $this->link,
+            'name' => $this->name,
+            'description' => $this->description,
+            'published' => false,
+            'scheduled_publish_time' => "{$this->scheduled_publish_time}",
+            'caption' => $this->caption,
         ];
     }
-
 }
