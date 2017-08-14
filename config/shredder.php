@@ -14,4 +14,8 @@ return [
      * Facebook graph api version
      */
     'default_graph_version' => 'v2.8',
+    /**
+     * Request permissions
+     */
+    'permissions' => [ 'email', 'user_likes' ],
 ];
