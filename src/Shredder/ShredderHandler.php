@@ -2,20 +2,13 @@
 
 namespace Juksy\Shredder;
 
+use Illuminate\Support\Str;
 use Facebook\Authentication\AccessToken;
 use Juksy\Shredder\Entities\Plate;
 use Juksy\Shredder\Exceptions\NoAccessTokenException;
 use Juksy\Shredder\Exceptions\NoPageAccessTokenException;
+use Juksy\Shredder\Exceptions\MethodNotFoundException;
 
-/**
- *
- * interface {
- *     public function getLoginUrl(); // return login url
- *     public function getAccessToken(); //return user token throw NoAccessTokenException
- *     public function feedPost(); //throw NoAccessTokenException
- *     public function getPosts(); // throw NoAccessTokenException
- * }
- */
 class ShredderHandler
 {
     /**
@@ -23,11 +16,17 @@ class ShredderHandler
      */
     private $app;
 
+    /**
+     * @var array
+     */
+    private $config;
+
     public $fb;
 
     function __construct($app, $config)
     {
         $this->app = $app;
+        $this->config = $config;
         $this->fb = new \Facebook\Facebook($config);
     }
 
@@ -40,7 +39,7 @@ class ShredderHandler
     public function login($backUrl)
     {
         $helper = $this->fb->getRedirectLoginHelper();
-        $permissions = ['email', 'user_likes', 'manage_pages', 'publish_pages']; // optional
+        $permissions = $this->config['permissions'];
         return $helper->getLoginUrl($backUrl, $permissions);
     }
 
@@ -84,41 +83,35 @@ class ShredderHandler
     }
 
     /**
-     * throw Exception
+     * Handle dynamic method calls into the request.
      *
-     * @param AccessToken|string $access_token
-     * @param Plate $plate
-     * @return array
+     * @param  string  $method
+     * @param  array  $parameters
+     * @return mixed
      */
-    public function feedPost($access_token, Plate $plate)
+    public function __call($method, $parameters)
     {
-        $endpoint = rtrim($plate->getEndpoint(), "/") . '/feed';
+        /*
+         * Make calls to Facebook Graph API with CRUD.
+         *
+         * @param string $access_token
+         * @param Plate $object_item
+         */
+        if (Str::startsWith($method, ['get', 'post', 'delete'])) {
+            $access_token = $parameters[0];
+            $plate = $parameters[1];
 
-        $params = $plate->getMessages();
+            // Second parameter should be method for Facebook API.
+            $values = explode('_', Str::snake($method), 2);
 
-        $ret = $this->fb->post($endpoint, $params, $access_token);
+            // Fetching facebook API.
+            $url = rtrim($plate->getEndpoint(), "/") . '/' . $values[1];
+            $ret = $this->fb->{$values[0]}($url, $plate->getMessages(), $access_token);
 
-        return $ret->getDecodedBody();
-    }
-
-    /**
-     * throw NoAccessTokenException
-     *
-     * @param AccessToken|string $access_token
-     * @param Plate $plate
-     * @param array $fields
-     * @return array
-     */
-    public function getPosts($access_token, Plate $plate, $fields = [])
-    {
-        $endpoint = rtrim($plate->getEndpoint(), "/") . '/promotable_posts';
-
-        if (count($fields)) {
-            $endpoint .= '?fields=' . implode(',', $fields);
+            return $ret->getDecodedBody();
         }
 
-        $ret = $this->fb->get($endpoint, $access_token);
-
-        return $ret->getDecodedBody();
+        throw new MethodNotFoundException(get_called_class(), $method);
     }
+
 }

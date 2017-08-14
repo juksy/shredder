@@ -32,11 +32,7 @@ class ShredderServiceProvider extends ServiceProvider
     {
         $this->app->singleton('shredder', function ($app)
         {
-            $config = [
-                'app_id' => $app['config']->get('shredder.app_id'),
-                'app_secret' => $app['config']->get('shredder.app_secret'),
-                'default_graph_version' => $app['config']->get('shredder.default_graph_version'),
-            ];
+            $config = $app['config']->get('shredder');
 
             // Using session by Laravel.
             $config['persistent_data_handler'] = new LaravelPersistentDataHandler($app['session.store']);
