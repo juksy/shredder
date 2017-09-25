@@ -3,6 +3,7 @@
 namespace Juksy\Shredder;
 
 use Illuminate\Support\Str;
+use Illuminate\Support\Arr;
 use Facebook\Authentication\AccessToken;
 use Juksy\Shredder\Entities\Plate;
 use Juksy\Shredder\Exceptions\NoAccessTokenException;
@@ -103,9 +104,10 @@ class ShredderHandler
 
             // Second parameter should be method for Facebook API.
             $values = explode('_', Str::snake($method), 2);
+            $function = Arr::get($values, 1, '');
 
             // Fetching facebook API.
-            $url = rtrim($plate->getEndpoint(), "/") . '/' . $values[1];
+            $url = rtrim($plate->getEndpoint() . '/' . $function, "/");
             $ret = $this->fb->{$values[0]}($url, $plate->getMessages(), $access_token);
 
             return $ret->getDecodedBody();
